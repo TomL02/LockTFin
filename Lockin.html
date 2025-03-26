@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lock In Drama</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #2B2B2B; /* Dark grey background */
+            overflow: hidden;
+        }
+        #lockButton {
+            padding: 40px 80px;
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+            background-color: #8A2BE2; /* Purple button */
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            box-shadow: 0 0 20px rgba(138, 43, 226, 0.7);
+        }
+        #lockButton:hover {
+            background-color: #9932CC;
+        }
+        #lockButton:active {
+            transform: scale(0.9);
+        }
+        #lockButton.clicked {
+            animation: slowMoPress 0.6s ease forwards, shake 0.4s ease 0.6s;
+        }
+        #lockButton::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+        #lockButton.clicked::after {
+            width: 400px;
+            height: 400px;
+            opacity: 0;
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 28px;
+            color: #DDA0DD; /* Light purple text */
+            opacity: 0;
+            transition: opacity 0.8s ease;
+            z-index: 1;
+        }
+        #message.show {
+            opacity: 1;
+        }
+        /* Particle styles */
+        .particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: rgba(138, 43, 226, 0.8);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleBurst 1.5s ease-out forwards;
+        }
+        @keyframes slowMoPress {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.85); }
+            100% { transform: scale(1.05); }
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            50% { transform: translateX(8px); }
+            75% { transform: translateX(-8px); }
+            100% { transform: translateX(0); }
+        }
+        @keyframes particleBurst {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(0.5); }
+        }
+    </style>
+</head>
+<body>
+    <button id="lockButton" onclick="lockIn()">Lock in</button>
+    <div id="message"></div>
+
+    <script>
+        function lockIn() {
+            const button = document.getElementById('lockButton');
+            const message = document.getElementById('message');
+            button.classList.add('clicked');
+            button.disabled = true;
+
+            // Show message with fade-in
+            message.textContent = "Locked in!";
+            message.classList.add('show');
+
+            // Create particles
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                const angle = Math.random() * 2 * Math.PI;
+                const distance = Math.random() * 100 + 50;
+                particle.style.setProperty('--x', `${Math.cos(angle) * distance}px`);
+                particle.style.setProperty('--y', `${Math.sin(angle) * distance}px`);
+                particle.style.left = '50%';
+                particle.style.top = '50%';
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 1500); // Clean up particles
+            }
+
+            // Reset button animation
+            setTimeout(() => {
+                button.classList.remove('clicked');
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
