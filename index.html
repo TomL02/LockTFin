@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lock In Drama</title>
+    <title>Lock In Challenge</title>
     <style>
         body {
             display: flex;
@@ -12,28 +12,37 @@
             height: 100vh;
             margin: 0;
             font-family: Arial, sans-serif;
-            background-color: #2B2B2B; /* Dark grey background */
+            background-color: #2B2B2B;
             overflow: hidden;
+            color: #DDA0DD;
+        }
+        #container {
+            text-align: center;
+            z-index: 1;
         }
         #lockButton {
             padding: 40px 80px;
             font-size: 36px;
             font-weight: bold;
             color: white;
-            background-color: #8A2BE2; /* Purple button */
+            background-color: #8A2BE2;
             border: none;
             border-radius: 15px;
             cursor: pointer;
             position: relative;
-            z-index: 1;
             overflow: hidden;
             transition: transform 0.2s ease, background-color 0.2s ease;
             box-shadow: 0 0 20px rgba(138, 43, 226, 0.7);
+            margin-top: 20px;
         }
-        #lockButton:hover {
+        #lockButton:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        #lockButton:hover:not(:disabled) {
             background-color: #9932CC;
         }
-        #lockButton:active {
+        #lockButton:active:not(:disabled) {
             transform: scale(0.9);
         }
         #lockButton.clicked {
@@ -59,15 +68,12 @@
         #message {
             margin-top: 20px;
             font-size: 28px;
-            color: #DDA0DD; /* Light purple text */
             opacity: 0;
             transition: opacity 0.8s ease;
-            z-index: 1;
         }
         #message.show {
             opacity: 1;
         }
-        /* Particle styles */
         .particle {
             position: absolute;
             width: 6px;
@@ -76,6 +82,31 @@
             border-radius: 50%;
             pointer-events: none;
             animation: particleBurst 1.5s ease-out forwards;
+        }
+        #nameInput, #rabbitQuestion, #extraTime {
+            margin: 10px 0;
+            font-size: 20px;
+        }
+        input[type="text"], input[type="number"] {
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: none;
+        }
+        #lockedList {
+            position: absolute;
+            bottom: 60px;
+            font-size: 18px;
+            text-align: center;
+            width: 100%;
+        }
+        #leaderboard {
+            position: absolute;
+            bottom: 10px;
+            font-size: 16px;
+            text-align: center;
+            width: 100%;
+            color: #B0B0B0;
         }
         @keyframes slowMoPress {
             0% { transform: scale(1); }
@@ -96,21 +127,59 @@
     </style>
 </head>
 <body>
-    <button id="lockButton" onclick="lockIn()">Lock in</button>
-    <div id="message"></div>
+    <div id="container">
+        <div id="nameInput">
+            <label>Enter your name: </label>
+            <input type="text" id="userName" placeholder="Your name" oninput="checkInputs()">
+        </div>
+        <div id="rabbitQuestion">
+            <label>Did mama raise a b*tch?</label><br>
+            <input type="radio" name="rabbit" value="yes" onchange="checkInputs()"> Yes
+            <input type="radio" name="rabbit" value="no" onchange="checkInputs()"> No
+        </div>
+        <div id="extraTime">
+            <label>Extra lock-in time (hours): </label>
+            <input type="number" id="extraHours" min="0" value="0" oninput="checkInputs()">
+        </div>
+        <button id="lockButton" onclick="lockIn()" disabled>Lock in</button>
+        <div id="message"></div>
+    </div>
+    <div id="lockedList">Locked in users:<br></div>
+    <div id="leaderboard">Daily Leaderboard:<br></div>
 
     <script>
+        let lockedUsers = [];
+        let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+        const today = new Date().toDateString();
+        const colors = ['#FF6F61', '#6B5B95', '#88B04B', '#F7CAC9', '#92A8D1', '#955251', '#B565A7']; // Matching colors
+
+        function checkInputs() {
+            const name = document.getElementById('userName').value.trim();
+            const rabbitAnswer = document.querySelector('input[name="rabbit"]:checked');
+            const extraHours = document.getElementById('extraHours').value;
+            const lockButton = document.getElementById('lockButton');
+            
+            if (name && rabbitAnswer && rabbitAnswer.value === 'no' && extraHours >= 0) {
+                lockButton.disabled = false;
+            } else {
+                lockButton.disabled = true;
+            }
+        }
+
         function lockIn() {
             const button = document.getElementById('lockButton');
             const message = document.getElementById('message');
+            const name = document.getElementById('userName').value.trim();
+            const extraHours = parseInt(document.getElementById('extraHours').value) || 0;
+            const lockTime = 3600000 + (extraHours * 3600000); // 1 hour + extra in milliseconds
+            const color = colors[lockedUsers.length % colors.length]; // Assign color
+
             button.classList.add('clicked');
             button.disabled = true;
-
-            // Show message with fade-in
             message.textContent = "Locked in!";
             message.classList.add('show');
 
-            // Create particles
+            // Add particles
             for (let i = 0; i < 20; i++) {
                 const particle = document.createElement('div');
                 particle.classList.add('particle');
@@ -121,14 +190,57 @@
                 particle.style.left = '50%';
                 particle.style.top = '50%';
                 document.body.appendChild(particle);
-                setTimeout(() => particle.remove(), 1500); // Clean up particles
+                setTimeout(() => particle.remove(), 1500);
             }
 
-            // Reset button animation
-            setTimeout(() => {
-                button.classList.remove('clicked');
+            // Add to locked users
+            const user = { name, timeLeft: lockTime, color, id: Date.now() };
+            lockedUsers.push(user);
+            updateLockedList();
+
+            // Add to leaderboard
+            leaderboard.push({ name, color, date: today });
+            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+            updateLeaderboard();
+
+            // Start timer
+            const interval = setInterval(() => {
+                user.timeLeft -= 1000;
+                if (user.timeLeft <= 0) {
+                    lockedUsers = lockedUsers.filter(u => u.id !== user.id);
+                    clearInterval(interval);
+                }
+                updateLockedList();
             }, 1000);
+
+            setTimeout(() => button.classList.remove('clicked'), 1000);
         }
+
+        function updateLockedList() {
+            const lockedList = document.getElementById('lockedList');
+            lockedList.innerHTML = "Locked in users:<br>" + 
+                lockedUsers.map(user => 
+                    `<span style="color: ${user.color}">${user.name} 🔒 ${formatTime(user.timeLeft)}</span>`
+                ).join('<br>');
+        }
+
+        function updateLeaderboard() {
+            const leaderboardDiv = document.getElementById('leaderboard');
+            const todayEntries = leaderboard.filter(entry => entry.date === today);
+            leaderboardDiv.innerHTML = "Daily Leaderboard:<br>" + 
+                todayEntries.map(entry => `<span style="color: ${entry.color}">${entry.name}</span>`).join('<br>');
+        }
+
+        function formatTime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours}h ${minutes}m ${secs}s`;
+        }
+
+        // Initial load
+        updateLeaderboard();
     </script>
 </body>
 </html>
